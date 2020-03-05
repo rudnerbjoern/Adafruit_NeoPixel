@@ -45,6 +45,12 @@
 
 #include "Adafruit_NeoPixel.h"
 
+//Locate this file in your local Marlin copy: Marlin 2.0/Marlin/Marlin/src/HAL/shared/Delay.h
+//and enter full path to this file below
+
+//#include <replace with path to Delay.h file>
+
+
 #ifdef TARGET_LPC1768
   #include <time.h>
 #endif
@@ -1894,8 +1900,8 @@ void Adafruit_NeoPixel::show(void) {
   }
 #endif
 #elif defined(TARGET_STM32F1)
-  uint8_t  *ptr, *end, p, bitMask;
-  uint32_t  pinMask;
+  volatile uint8_t  *ptr, *end, p, bitMask;
+  volatile uint32_t  pinMask;
 
   pinMask =  BIT(PIN_MAP[pin].gpio_bit);
   ptr     =  pixels;
@@ -1905,38 +1911,27 @@ void Adafruit_NeoPixel::show(void) {
   
   #define GPIO_SET(IO)   (PIN_MAP[IO].gpio_device->regs->BSRR = pinMask)
   #define GPIO_CLEAR(IO) (PIN_MAP[IO].gpio_device->regs->BRR =  pinMask)
-
 #ifdef NEO_KHZ400 // 800 KHz check needed only if 400 KHz support enabled
   if(is800KHz) {
 #endif
     for(;;) {
       if(p & bitMask) {
-        // data ONE high
-        // min: 550 typ: 700 max: 5,500
-        GPIO_SET(pin);      
-        asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop; nop; nop; nop; nop; nop; nop; nop;");
-        // min: 450 typ: 600 max: 5,000
-        GPIO_CLEAR(pin);
-        asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop;");
-      } else {
-        // data ZERO high
-        // min: 200  typ: 350 max: 500
+        // data ONE
+        // min: 650 typ: 800 max: 950
         GPIO_SET(pin);
-        asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop; nop; nop;");
-        // data low
-        // min: 450 typ: 600 max: 5,000
+        DELAY_NS(700);  //high
+        // min: 300 typ: 450 max: 600
         GPIO_CLEAR(pin);
-        asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;"
-            "nop;");
+        DELAY_NS(150);  //low
+      } else {
+        // data ZERO
+        // min: 250  typ: 400 max: 550
+        GPIO_SET(pin);
+        DELAY_NS(100);  //high
+        // data low
+        // min: 700 typ: 850 max: 1000
+        GPIO_CLEAR(pin);
+        DELAY_NS(750);  //low
       }
       if(bitMask >>= 1) {
         // Move on to the next pixel
